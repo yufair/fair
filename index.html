@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>大明王朝1566 · 角色人格测试</title>
+  <style>
+    :root {
+      --ink: #2c2c2c; --paper: #f4f1ea; --accent: #7c2d29; --border: #d4cec1;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Noto Serif SC", "Songti SC", "STSong", serif;
+      background-color: var(--paper); color: var(--ink);
+      min-height: 100vh; display: flex; justify-content: center; align-items: center;
+      padding: 20px; line-height: 1.8;
+      background-image: radial-gradient(#e0dbcf 1px, transparent 1px);
+      background-size: 20px 20px;
+    }
+    .app {
+      width: 100%; max-width: 680px; background: #fffdf9;
+      border: 1px solid var(--border); border-radius: 6px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+      padding: 40px; position: relative; overflow: hidden;
+    }
+    .app::before {
+      content: ""; position: absolute; top: 0; left: 0; right: 0; height: 4px;
+      background: linear-gradient(90deg, var(--accent), #b08d6a); opacity: 0.8;
+    }
+    /* 首页 */
+    .intro { text-align: center; }
+    .intro h1 { font-size: 28px; letter-spacing: 4px; margin-bottom: 10px; color: var(--accent); font-weight: normal; }
+    .intro p { color: #6e665a; font-size: 15px; margin-bottom: 30px; }
+    .start-btn {
+      background: var(--accent); color: #fff; border: none; padding: 12px 40px;
+      font-size: 16px; border-radius: 4px; cursor: pointer; letter-spacing: 2px;
+      font-family: inherit; transition: opacity 0.2s;
+    }
+    .start-btn:hover { opacity: 0.8; }
+    /* 答题 */
+    .quiz-header { font-size: 13px; color: #9a8e7e; margin-bottom: 20px; text-align: right; font-family: sans-serif; }
+    .q-text { font-size: 18px; font-weight: bold; margin-bottom: 24px; line-height: 1.7; }
+    .options { display: flex; flex-direction: column; gap: 12px; }
+    .option {
+      text-align: left; background: #fff; border: 1px solid var(--border);
+      padding: 16px 20px; border-radius: 4px; font-size: 15px; cursor: pointer;
+      font-family: inherit; color: var(--ink); transition: all 0.2s;
+    }
+    .option:hover { border-color: var(--accent); background: #fdfbf7; transform: translateX(4px); }
+    /* 结果 */
+    .result { text-align: center; }
+    .result .badge { display: inline-block; padding: 4px 12px; border: 1px solid var(--accent); color: var(--accent); font-size: 12px; border-radius: 20px; margin-bottom: 20px; }
+    .result .name { font-size: 36px; color: var(--accent); margin-bottom: 8px; letter-spacing: 4px; }
+    .result .tags { font-size: 14px; color: #6e665a; margin-bottom: 24px; font-family: sans-serif; }
+    .result .tags span { display: inline-block; margin: 0 8px; padding: 2px 8px; background: #eee; border-radius: 4px; }
+    .result .rarity { font-size: 14px; color: #8b1a1a; margin-bottom: 24px; background: #fff0f0; display: inline-block; padding: 6px 16px; border-radius: 4px; }
+    .result .reason { text-align: left; font-size: 15px; color: #3a342c; line-height: 2; margin-bottom: 20px; padding: 20px; background: #f9f6f0; border-left: 3px solid var(--accent); }
+    .result .secondary { font-size: 13px; color: #8a8070; margin-bottom: 30px; }
+    .restart-btn { background: none; border: 1px solid var(--border); color: #6e665a; padding: 10px 24px; font-family: inherit; cursor: pointer; border-radius: 4px; transition: all 0.2s; }
+    .restart-btn:hover { border-color: var(--accent); color: var(--accent); }
+  </style>
+</head>
+<body>
+<div class="app" id="app"></div>
+
+<script>
+/* ==========================================
+ * 1. 数据配置：16个角色 (OCEAN坐标 + 标签 + 静态稀有度 + 毒舌文案)
+ * 坐标范围 0-100: [O, C, E, A, N]
+ * ========================================== */
+const characters = [
+  { name:"嘉靖", emoji:"☯️", coord:[90,90,20,15,40], mbti:"INTJ", zodiac:"天蝎座", rarity: 8,
+    reason:"你不是不合群，你只是觉得大部分人不值得你浪费表情。你习惯站在高处看所有人忙忙碌碌，心里清楚谁在演戏、谁在认真，但你就是不想下场。你的掌控欲藏在“随便”两个字后面——你比谁都清楚，真正说了算的人，从来不需要大声说话。" },
+  { name:"海瑞", emoji:"⚖️", coord:[30,95,30,20,30], mbti:"ISTJ", zodiac:"金牛座", rarity: 5,
+    reason:"你的原则是真的，你的孤立也是真的。你不太会为了“大家都这样”而说服自己，这让你在某些时刻显得不近人情，但你自己知道，你不是不会变通，你只是不愿意。问题是，你周围有多少人受得了你这种不愿意？" },
+  { name:"吕芳", emoji:"🕊️", coord:[60,80,50,90,30], mbti:"ENFJ", zodiac:"巨蟹座", rarity: 12,
+    reason:"你最大的本事不是争，是“稳”。你太懂什么叫“先活下来，再谈其他”了。你护着身边的人，不是因为你有多善良，而是你早就看明白：在一个人人自危的地方，能让人信你，就是最大的筹码。你不是没有锋芒，你只是把锋芒藏在了周全下面。" },
+  { name:"严嵩", emoji:"🕸️", coord:[40,90,40,30,50], mbti:"ISTJ", zodiac:"双鱼座", rarity: 7,
+    reason:"你对“事情实际怎么运转”的敏感度，远高于对“应不应该”的兴趣。你不太会被口号感动，也不太会被道德绑架，你相信规则是拿来用的，不是拿来信的。你活得清醒，但也因此很难真正信任任何人——包括你自己。" },
+  { name:"胡宗宪", emoji:"🏹", coord:[50,85,40,75,40], mbti:"INFJ", zodiac:"天秤座", rarity: 9,
+    reason:"你是一个在理想与现实之间走钢丝的人。你有底线，但也清楚事情不是靠硬碰硬就能办成的。你太习惯把所有人的利益都考虑进去，结果就是把自己夹在中间。你保住了大局，却常常保不住自己的内心平静。" },
+  { name:"张居正", emoji:"♟️", coord:[80,90,30,25,35], mbti:"INTJ", zodiac:"摩羯座", rarity: 6,
+    reason:"你是一个目标感极强、愿意为长期结果忍耐当下的人。你不太在意过程中的“干净”，更在意事情最终能不能成。你相信牺牲是必要的，这让你显得冷酷，但只有你自己知道你背负了什么。别走得太远，忘了当初为什么出发。" },
+  { name:"杨金水", emoji:"🎭", coord:[70,70,50,30,60], mbti:"INFJ", zodiac:"水瓶座", rarity: 4,
+    reason:"你是那种在悬崖边上还能笑出来的人。你太清楚什么时候该进、什么时候该装死，你的生存本能强到让身边的人害怕。你能对别人狠，对自己更狠。但装久了，你还记得哪个是真的你吗？" },
+  { name:"徐阶", emoji:"🕰️", coord:[70,95,30,60,30], mbti:"INFJ", zodiac:"摩羯座", rarity: 8,
+    reason:"你信奉“时间是最好的武器”。你能忍常人所不能忍，表面温润如玉，内心步步为营。你从不打无准备之仗，但也因为太能忍，很多本该早点爆发的事，最后都烂在了肚子里。你赢在了耐心，也输在了耐心。" },
+  { name:"严世蕃", emoji:"🔥", coord:[60,40,90,20,70], mbti:"ESTP", zodiac:"白羊座", rarity: 6,
+    reason:"你聪明、直接，且不屑于掩饰自己的欲望。你看不起那些弯弯绕绕的伪君子，喜欢用最凌厉的方式解决问题。你的缺点是太顺了，没受过真正的毒打。一旦遇到比你更不要命的人，你的嚣张就会变成致命伤。" },
+  { name:"陈洪", emoji:"🐕", coord:[20,50,60,10,80], mbti:"ESTP", zodiac:"狮子座", rarity: 5,
+    reason:"你对权力的嗅觉比谁都灵敏。你信奉丛林法则，对上谄媚，对下狠辣，因为你太清楚底层爬起来有多难。你拼命想往上爬，却永远无法摆脱那种随时会掉下去的恐惧。你的凶狠，其实全都是恐惧的伪装。" },
+  { name:"黄锦", emoji:"🛡️", coord:[20,60,70,80,30], mbti:"ESFP", zodiac:"射手座", rarity: 10,
+    reason:"在这个全是人精的地方，你是个难得的“憨人”。你认死理、重感情，别人说你傻，你只是觉得做人得对得起良心。你的简单在这个环境里显得格格不入，但正是你的简单，成了很多人在黑暗里唯一敢信任的光。" },
+  { name:"李妃", emoji:"👑", coord:[70,85,60,70,30], mbti:"ENTJ", zodiac:"处女座", rarity: 7,
+    reason:"你是个清醒的实用主义者。你懂得如何在男人的权力游戏中保持独立判断，也懂得如何用最妥帖的方式解决最棘手的问题。你看似在幕后，但很多时候，真正稳住局面的就是你。你不是没有野心，你只是知道怎么克制。" },
+  { name:"芸娘", emoji:"🌸", coord:[50,70,30,65,60], mbti:"ISFP", zodiac:"双鱼座", rarity: 4,
+    reason:"你的一生都在被命运推着走，你像个礼物一样被送来送去。但你心里始终有一块干净的地方，哪怕身处泥沼，你也守住了自己的底线。你看起来柔弱，其实比大多数人都刚烈，只是你把这把刀藏在了一低头的顺从里。" },
+  { name:"高翰文", emoji:"📜", coord:[70,50,40,70,70], mbti:"ISFP", zodiac:"双鱼座", rarity: 5,
+    reason:"你是个典型的书生。你有良知，有抱负，但严重缺乏在泥潭里打滚的手腕。你总是凭一腔热血做事，最后却常常好心办坏事。现实对你来说太残酷了，因为你一直在用书本里的道理，去碰撞这个不讲道理的世界。" },
+  { name:"田有禄", emoji:"🎲", coord:[20,40,50,40,50], mbti:"ISTP", zodiac:"双子座", rarity: 8,
+    reason:"你是官场里的“润滑剂”。你没多大坏心眼，但也谈不上什么骨气，最大的愿望就是两头不得罪，安稳捞点好处。你代表了绝大多数普通人的生存状态——见风使舵、趋利避害，不伟大，但真实。" },
+  { name:"齐大柱", emoji:"🌾", coord:[10,60,40,70,20], mbti:"ESFP", zodiac:"金牛座", rarity: 6,
+    reason:"你是个真性情的粗人。你认死理，谁对你好，你拿命还；谁欺负人，你第一个上。你不懂什么朝堂上的弯弯绕绕，也不屑于去懂。在你看来，人活着就是凭良心，凭义气。你也许不够聪明，但你活得比谁都痛快。" }
+];
+
+/* ==========================================
+ * 2. 数据配置：16道剧味情境题
+ * 计分规则: s数组对应 [O, C, E, A, N] 的加减分
+ * ========================================== */
+const questions = [
+  { text:"衙门里新来了一位同僚，背景很深，但做事一塌糊涂。你的第一反应是：",
+    options:[
+      { text:"把规矩和章程理清楚，该说的就说，事不能烂在手里。", s:[2,3,1,-1,0] },
+      { text:"先观察观察，看看上面的意思，别急着当出头鸟。", s:[0,1,-1,0,1] },
+      { text:"私下找他聊聊，看看能不能帮他把事理顺，大家都不容易。", s:[1,2,1,3,-1] },
+      { text:"离他远点，但把他经手的事都记下来，别到时候牵连自己。", s:[0,2,-1,-2,2] }
+    ]},
+  { text:"上面交下来一桩差事，办好了是大功，但底下会怨声载道。你会：",
+    options:[
+      { text:"先判断这差事背后真正是谁在推，确保自己站对位置再动手。", s:[1,2,0,-2,1] },
+      { text:"想办法在各方之间周旋，把伤害降到最低，哪怕自己多费十倍力气。", s:[1,3,1,4,0] },
+      { text:"该得罪就得罪，事情总要有人做，对得起俸禄就行。", s:[0,3,1,-1,-1] },
+      { text:"不主动出头，跟着大流走，天塌下来有个高的顶着。", s:[0,-1,-1,0,0] }
+    ]},
+  { text:"御前会议上，你的意见和内阁几位阁老都不一致。你会：",
+    options:[
+      { text:"当场说出来，哪怕场面难看，该坚持的必须坚持。", s:[1,3,3,-2,1] },
+      { text:"先记下来，会后找关键人物私下沟通，迂回推进。", s:[2,2,0,1,0] },
+      { text:"判断一下风向，如果改变不了结果，就不浪费力气了。", s:[0,0,-1,0,-1] },
+      { text:"把真实想法藏住，顺着大家的意思，但心里有自己的账本。", s:[1,1,-1,-1,2] }
+    ]},
+  { text:"你更容易被下面哪种同僚激怒？",
+    options:[
+      { text:"明明有底线，却为了利益说放弃就放弃的人。", s:[0,2,1,-3,1] },
+      { text:"只会讲大道理，却一件实事也办不成的人。", s:[-1,3,0,-2,0] },
+      { text:"为了往上爬，把身边人当垫脚石的人。", s:[0,1,1,2,2] },
+      { text:"看不清形势、到处乱冲，连累所有人的人。", s:[-1,2,0,-1,1] }
+    ]},
+  { text:"如果把你放到一个“说真话会吃亏、不说话又良心不安”的位置上，你大概率会：",
+    options:[
+      { text:"说。良心不安比吃亏更难受。", s:[1,3,2,1,1] },
+      { text:"找一个既能说真话、又不至于把自己搭进去的方式。", s:[3,2,1,1,0] },
+      { text:"先沉默，等一个合适的时机再说。", s:[0,1,-1,0,1] },
+      { text:"不说。说了也改变不了什么，先保住自己。", s:[-1,-1,-1,-1,0] }
+    ]},
+  { text:"你手底下的人犯了错，上面追责下来。你的第一反应是：",
+    options:[
+      { text:"先把责任扛下来，护住底下人，事后再慢慢算账。", s:[0,2,1,3,1] },
+      { text:"把犯错的人交出去，按规矩办，不牵连自己。", s:[-1,3,0,-3,-1] },
+      { text:"想办法把水搅浑，让上面查不下去，大家都安全。", s:[2,1,1,1,2] },
+      { text:"先搞清楚这人是谁的人，再决定怎么办。", s:[1,2,0,-2,0] }
+    ]},
+  { text:"你更认同哪种活法？",
+    options:[
+      { text:"人活一世，总要守住点什么，哪怕最后什么都没守住。", s:[0,3,1,1,1] },
+      { text:"先活下来，再谈其他。活着才有翻盘的机会。", s:[1,2,0,-1,0] },
+      { text:"让身边的人因为自己过得好一点，比什么大道理都实在。", s:[0,1,1,4,-1] },
+      { text:"看清局势，顺势而为，别跟大势较劲。", s:[0,1,0,0,-2] }
+    ]},
+  { text:"如果你有十分把握能扳倒一个你厌恶的对手，但过程会牵连无辜。你会：",
+    options:[
+      { text:"扳。机会稍纵即逝，成大事不拘小节。", s:[1,3,1,-3,-1] },
+      { text:"再等一等，找一个不牵连无辜的办法。", s:[2,2,0,3,1] },
+      { text:"先把证据留好，等对方自己出错，不主动出手。", s:[1,3,-1,0,0] },
+      { text:"放弃。用无辜者的代价换来的胜利，不算胜利。", s:[0,1,0,3,2] }
+    ]},
+  { text:"在饭局上，你通常是那个：",
+    options:[
+      { text:"说话最少的人，但每一句都在观察别人。", s:[1,1,-3,0,1] },
+      { text:"负责活跃气氛的人，再尴尬的场面也能圆回来。", s:[1,1,4,2,-1] },
+      { text:"坐在关键人物旁边，该敬酒敬酒，该闭嘴闭嘴。", s:[1,3,2,1,0] },
+      { text:"找借口提前走的人，这种场合能躲就躲。", s:[0,0,-3,-1,0] }
+    ]},
+  { text:"你发现自己被上面当成了“棋子”，你的第一反应是：",
+    options:[
+      { text:"棋子也有棋子的走法，找准时机反将一军。", s:[2,3,1,-2,0] },
+      { text:"装作不知道，继续当棋子，但开始给自己留后路。", s:[1,2,-1,0,2] },
+      { text:"直接去找上面问清楚，哪怕撕破脸。", s:[0,1,3,-2,1] },
+      { text:"棋子就棋子吧，至少说明还有用，总比被扔了强。", s:[0,-1,-1,1,1] }
+    ]},
+  { text:"一个你信任的同僚，为了自保出卖了你。你会：",
+    options:[
+      { text:"记在心里，但不会当场翻脸，以后各走各的路。", s:[1,2,-1,-1,2] },
+      { text:"理解他。换了自己在那个位置，未必不会做同样的选择。", s:[2,1,0,4,0] },
+      { text:"报复。不是咽不下这口气，是得让所有人知道你不是软柿子。", s:[0,3,2,-3,1] },
+      { text:"先反思自己，是不是哪里没考虑到，才让对方觉得只能出卖你。", s:[2,3,-1,3,2] }
+    ]},
+  { text:"你手里有一件能改变很多人命运的东西（一封信、一道密令），但交出去之后你自己就再无退路。你会：",
+    options:[
+      { text:"交。有些事比自己的退路重要。", s:[1,3,1,1,1] },
+      { text:"留着。关键时候用，但绝不是现在。", s:[2,4,0,-1,0] },
+      { text:"找一个信得过的人，让他替你交，自己不站到台前。", s:[2,2,0,2,1] },
+      { text:"毁掉。这东西是个祸害，留着迟早出事。", s:[-1,1,0,0,-1] }
+    ]},
+  { text:"你更害怕下面哪种处境？",
+    options:[
+      { text:"一辈子碌碌无为，什么也没留下。", s:[2,2,2,0,2] },
+      { text:"身边的人都离开了，只剩自己一个人。", s:[0,1,0,3,2] },
+      { text:"被人当傻子耍，还蒙在鼓里。", s:[1,2,0,-1,1] },
+      { text:"做了违心的事，半夜醒来瞧不起自己。", s:[0,2,-1,2,2] }
+    ]},
+  { text:"如果让你选一种方式度过余生，你会选：",
+    options:[
+      { text:"在一个没人认识的地方，安安静静过日子。", s:[-1,1,-3,2,-1] },
+      { text:"留在权力中心，哪怕凶险，也总比被边缘化强。", s:[2,3,2,-2,1] },
+      { text:"做点实实在在的事，帮一个是一个。", s:[0,3,1,4,0] },
+      { text:"看情况。能进就进，该退就退，不跟自己较劲。", s:[1,1,0,1,-2] }
+    ]},
+  { text:"你觉得“规矩”这个东西，到底是用来干什么的？",
+    options:[
+      { text:"是用来保护人的，没有规矩，好人寸步难行。", s:[0,4,0,2,-1] },
+      { text:"是用来管人的，谁掌握了规矩，谁就掌握了权力。", s:[1,3,1,-2,0] },
+      { text:"规矩是死的，人是活的，关键时候得会变通。", s:[3,-1,1,0,0] },
+      { text:"规矩是给老实人定的，聪明人都在规矩外面走。", s:[2,0,0,-2,1] }
+    ]},
+  { text:"如果你只能给后人留一句话，你会留：",
+    options:[
+      { text:"“有些事，总要有人去做。”", s:[0,3,1,1,1] },
+      { text:"“先活着，再说别的。”", s:[0,1,-1,-1,0] },
+      { text:"“对得起自己，比什么都难。”", s:[1,2,0,1,2] },
+      { text:"“别太把自己当回事，也别太不把自己当回事。”", s:[2,1,0,2,-2] }
+    ]}
+];
+
+/* ==========================================
+ * 3. 状态与逻辑管理
+ * ========================================== */
+let userScore = [50, 50, 50, 50, 50]; // 初始五项均为50
+let currentQ = 0;
+
+const app = document.getElementById('app');
+
+function renderIntro() {
+  app.innerHTML = `
+    <div class="intro">
+      <h1>大明王朝1566</h1>
+      <p>角色人格测试 · OCEAN五维深度解析</p>
+      <p style="font-size: 13px; margin-bottom: 40px; color: #9a8e7e;">“在这个朝堂上，没有纯粹的好人，也没有纯粹的坏人，只有不同位置的活法。”</p>
+      <button class="start-btn" onclick="startQuiz()">开始测局</button>
+    </div>
+  `;
+}
+
+function startQuiz() {
+  userScore = [50, 50, 50, 50, 50];
+  currentQ = 0;
+  renderQuestion();
+}
+
+function renderQuestion() {
+  if (currentQ >= questions.length) {
+    showResult();
+    return;
+  }
+  const q = questions[currentQ];
+  app.innerHTML = `
+    <div class="quiz-header">第 ${currentQ + 1} / ${questions.length} 题</div>
+    <div class="q-text">${q.text}</div>
+    <div class="options">
+      ${q.options.map((opt, i) => `<button class="option" onclick="selectOption(${i})">${opt.text}</button>`).join('')}
+    </div>
+  `;
+}
+
+function selectOption(optIndex) {
+  const opt = questions[currentQ].options[optIndex];
+  // 计分：乘以权重3，让差异更明显
+  for(let i = 0; i < 5; i++) {
+    userScore[i] += opt.s[i] * 3;
+  }
+  currentQ++;
+  renderQuestion();
+}
+
+/* ==========================================
+ * 4. 结果计算
+ * ========================================== */
+function showResult() {
+  // 1. 分数收束到 [0, 100]
+  const finalScores = userScore.map(v => Math.max(0, Math.min(100, v)));
+
+  // 2. 计算欧氏距离，寻找最匹配角色
+  const ranked = characters.map(char => {
+    const dist = Math.sqrt(char.coord.reduce((sum, val, idx) => sum + Math.pow(val - finalScores[idx], 2), 0));
+    return { ...char, dist };
+  }).sort((a, b) => a.dist - b.dist);
+
+  const best = ranked[0];
+  const second = ranked[1];
+
+  // 3. 渲染结果页（使用静态预设的稀有度 best.rarity）
+  app.innerHTML = `
+    <div class="result">
+      <div class="badge">匹配度 TOP 1</div>
+      <div class="name">${best.emoji} ${best.name}</div>
+      <div class="tags">
+        <span>${best.mbti}</span>
+        <span>${best.zodiac}</span>
+      </div>
+      
+      <div class="rarity">这类人格约占测试人群的 ${best.rarity}%</div>
+      
+      <div class="reason">
+        ${best.reason}
+      </div>
+      
+      <div class="secondary">
+        你的副角色是：<b>${second.name}</b>。<br>
+        你在这两个角色之间的气质有重叠，但 ${best.name} 的契合度更高。
+      </div>
+      
+      <button class="restart-btn" onclick="renderIntro()">重新测局</button>
+    </div>
+  `;
+}
+
+// 初始化
+renderIntro();
+</script>
+</body>
+</html>
